@@ -15,7 +15,7 @@ function plan(input,start,goal,mode,opt={}){
  const result={map:m,events,path:[],raw:[],success:false,expanded:0,mode};
  const event=(phase,title,text,data={})=>events.push({phase,title,text,...data});
  const fail=message=>{event('failed','规划结束 · 未找到路径',message);result.message=message;return result};
- event('init','初始化代价地图','灰色 × 为障碍；蓝色数值低，橙红色数值高。A* 搜索默认显示 f，梯度提取使用 P，地图代价 C 可单独切换。');
+ event('init','初始化代价地图','灰色 254 为障碍；蓝色数值低，橙红色数值高。A* 搜索默认显示 f，梯度提取使用 P，地图代价 C 可单独切换。');
  if(!free(m,s.x,s.y)||!free(m,t.x,t.y))return fail('起点或目标在障碍物内，或超出地图。请重新设置。');
  if(mode==='lattice'&&[s.theta,t.theta].some(a=>Math.abs(a/(Math.PI/4)-Math.round(a/(Math.PI/4)))>1e-6))return fail('Lattice 教学基元要求起终朝向为 45° 的整数倍，请调整朝向档位。');
  const startH=mode==='nav-dijkstra'?0:dist(s,t)+(['hybrid','lattice'].includes(mode)?.25*Math.abs(angle(s.theta-t.theta)):0);events[0].updates=[{id:Math.round(s.y)*m.w+Math.round(s.x),v:0,h:startH,f:startH}];
