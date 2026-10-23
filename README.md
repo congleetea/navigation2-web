@@ -29,12 +29,12 @@ python3 -m http.server 8765 --directory web/nav2-planner-lab/dist
 - `dist/engine.js`：纯计算引擎与事件生成，兼容浏览器和 Node。
 - `dist/app.js`：交互、时间线回放、Canvas 渲染。
 - `dist/index.html` / `style.css`：页面结构与响应式布局。
-- `tests/engine.test.cjs`：26 项搜索与事件回放数据回归检查。
+- `tests/engine.test.cjs`：搜索与事件回放数据回归检查。
 
 运行测试（Node 18+）：
 
 ```sh
-node --test web/nav2-planner-lab/tests/engine.test.cjs
+node --test web/nav2-planner-lab/tests/*.test.cjs
 ```
 
 已使用本机 Chrome 检查六种算法完成、时间线往返一致、地图点击、单步、播放暂停、390px 布局与浏览器异常。算法动画按预计算的事件序列回放，并不是每按一次按钮才调用一次真实 Nav2。
@@ -47,3 +47,9 @@ node --test web/nav2-planner-lab/tests/engine.test.cjs
 - Hybrid 为前进型曲率模型，16 朝向档位；未实现倒车、障碍启发表、解析连接和后续平滑。
 - Lattice 使用 8 朝向内置教学动作表（含原地旋转），并非官方 JSON 运动基元；不保证曲率连续。
 - 位姿规划使用半径 0.32 格圆形足迹与近似目标容差；所有性能数字仅用于本网页观察。
+
+## 格内数值与色标
+
+默认显示当前步骤的 NavFn 势值 P 或其他搜索的累计代价 g，也可切换到地图局部代价 C。颜色从蓝（低）经青、黄过渡到橙红（高）；搜索数值的色标上限由本轮预计算事件确定，整轮回放不变。未计算为 ∞、障碍为 ×，数值默认保留一位小数，观察器提供三位小数。
+
+黄色边框表示当前步骤实际改变数值的格子，下方显示旧值到新值。Hybrid/Lattice 每格显示已发现朝向状态中的最小 g，不代表同格所有朝向代价相同。地图较窄时可触摸横向滚动；点击设置位置，滑动不会修改起终点。绘制/擦除模式的拖动用于编辑。

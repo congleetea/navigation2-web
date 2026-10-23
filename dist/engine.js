@@ -15,9 +15,10 @@ function plan(input,start,goal,mode,opt={}){
  const result={map:m,events,path:[],raw:[],success:false,expanded:0,mode};
  const event=(phase,title,text,data={})=>events.push({phase,title,text,...data});
  const fail=message=>{event('failed','规划结束 · 未找到路径',message);result.message=message;return result};
- event('init','初始化代价地图','深色为障碍，暖色为膨胀代价。起点 S 与目标 G 由你设置。');
+ event('init','初始化代价地图','灰色 × 为障碍；蓝色数值低，橙红色数值高。默认显示累计势值或代价，地图代价 C 可单独切换。');
  if(!free(m,s.x,s.y)||!free(m,t.x,t.y))return fail('起点或目标在障碍物内，或超出地图。请重新设置。');
  if(mode==='lattice'&&[s.theta,t.theta].some(a=>Math.abs(a/(Math.PI/4)-Math.round(a/(Math.PI/4)))>1e-6))return fail('Lattice 教学基元要求起终朝向为 45° 的整数倍，请调整朝向档位。');
+ events[0].updates=[{id:Math.round(s.y)*m.w+Math.round(s.x),v:0}];
  if(dist(s,t)<.01&&(!['hybrid','lattice'].includes(mode)||Math.abs(angle(s.theta-t.theta))<.01)){result.path=[s];result.raw=[s];result.success=true;event('done','起终位姿重合','无需移动，返回一个有效位姿。',{path:[s]});return result}
  const done=()=>{result.success=true;event('done','规划完成','路径已恢复。点击时间线或上一步，可重新检查每次计算。',{path:result.path});return result};
  if(mode.startsWith('nav-')){
@@ -46,7 +47,7 @@ function plan(input,start,goal,mode,opt={}){
  if(mode==='smac'||mode==='theta'){
   const si=Math.round(s.y)*m.w+Math.round(s.x),ti=Math.round(t.y)*m.w+Math.round(t.x),nodes=new Map(),closed=new Set(),q=new Heap();nodes.set(si,{id:si,g:0,parent:null});q.push({id:si,g:0,f:dist(s,t)});
   while(q.length&&result.expanded<10000){const a=q.pop(),n=nodes.get(a.id);if(closed.has(a.id)||a.g>n.g+1e-7)continue;closed.add(a.id);result.expanded++;const p=coordinate(m,a.id),updates=[],edges=[];
-   if(mode==='theta'&&n.parent!==null){const par=nodes.get(n.parent);if(par.parent!==null){const anc=coordinate(m,par.parent),l=line(m,anc,p),ng=nodes.get(par.parent).g+l.cost,accepted=l.ok&&ng<n.g-1e-7;if(accepted){n.g=ng;n.parent=par.parent}event('los','检查祖先与当前节点的视线',accepted?'无碰撞，而且代价更低：跳过中间父节点，连接祖先。':l.ok?'直线可通行，但没有更低代价，保留原父节点。':'直线穿过障碍，保留原父节点。',{current:p,los:{from:anc,to:p},accepted,formula:'g_candidate = g(ancestor) + cost(LOS)'})}}
+   if(mode==='theta'&&n.parent!==null){const par=nodes.get(n.parent);if(par.parent!==null){const anc=coordinate(m,par.parent),l=line(m,anc,p),ng=nodes.get(par.parent).g+l.cost,accepted=l.ok&&ng<n.g-1e-7;if(accepted){n.g=ng;n.parent=par.parent}event('los','检查祖先与当前节点的视线',accepted?'无碰撞，而且代价更低：跳过中间父节点，连接祖先。':l.ok?'直线可通行，但没有更低代价，保留原父节点。':'直线穿过障碍，保留原父节点。',{current:p,los:{from:anc,to:p},accepted,updates:accepted?[{id:a.id,v:n.g}]:[],formula:'g_candidate = g(ancestor) + cost(LOS)'})}}
    event('search','扩展八邻域节点','从优先队列取出 f = g + h 最小的节点，检查相邻格子并保存更低代价的父节点。',{current:p,closed:a.id,g:n.g,h:dist(p,t),f:n.g+dist(p,t),neighbors:dirs8.map(([x,y])=>({x:p.x+x,y:p.y+y}))});
    if(a.id===ti)break;
    for(const [dx,dy]of dirs8){const b={x:p.x+dx,y:p.y+dy};if(!free(m,b.x,b.y)||!line(m,p,b).ok)continue;const id=b.y*m.w+b.x;if(closed.has(id))continue;const c=mode==='theta'?line(m,p,b).cost:Math.hypot(dx,dy)*(1+m.weight*m.cost[id]/252),g=n.g+c,old=nodes.get(id);if(!old||g<old.g){nodes.set(id,{id,g,parent:a.id});q.push({id,g,f:g+dist(b,t)});updates.push({id,v:g});edges.push({from:p,to:b})}}
