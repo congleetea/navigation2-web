@@ -6,3 +6,5 @@
 .canvas-wrap{overflow-x:auto}canvas{min-width:780px;touch-action:pan-x pan-y}canvas.drawing{touch-action:none}.segmented button{white-space:nowrap}
 @media(max-width:1050px){.canvas-wrap:before{content:'左右滑动地图查看数值 · 绘制障碍时拖动可编辑';display:block;color:#c6ddd2;background:#122829;font-size:10px;line-height:2.6;padding:0 12px;position:sticky;left:0;width:100%;box-sizing:border-box}}
 @media(max-width:760px){.editbar{flex-wrap:wrap}.editbar>.text-button{margin-left:auto}}
+
+.costmap-notes{margin:0 22px 12px;color:#677c66;font-size:11px}.costmap-notes summary{line-height:1.8;color:#315f50}.costmap-notes table{margin-top:9px;font-size:10px;white-space:normal}.costmap-notes th,.costmap-notes td{padding:8px;line-height:1.7}.costmap-notes td:nth-child(2){white-space:nowrap;font-family:var(--mono)}.costmap-notes p{font-size:10px;line-height:1.9}@media(max-width:760px){.costmap-notes{margin:0 12px 12px}}

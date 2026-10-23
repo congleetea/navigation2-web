@@ -15,18 +15,18 @@ function plan(input,start,goal,mode,opt={}){
  const result={map:m,events,path:[],raw:[],success:false,expanded:0,mode};
  const event=(phase,title,text,data={})=>events.push({phase,title,text,...data});
  const fail=message=>{event('failed','规划结束 · 未找到路径',message);result.message=message;return result};
- event('init','初始化代价地图','灰色 × 为障碍；蓝色数值低，橙红色数值高。默认显示累计势值或代价，地图代价 C 可单独切换。');
+ event('init','初始化代价地图','灰色 × 为障碍；蓝色数值低，橙红色数值高。A* 搜索默认显示 f，梯度提取使用 P，地图代价 C 可单独切换。');
  if(!free(m,s.x,s.y)||!free(m,t.x,t.y))return fail('起点或目标在障碍物内，或超出地图。请重新设置。');
  if(mode==='lattice'&&[s.theta,t.theta].some(a=>Math.abs(a/(Math.PI/4)-Math.round(a/(Math.PI/4)))>1e-6))return fail('Lattice 教学基元要求起终朝向为 45° 的整数倍，请调整朝向档位。');
- events[0].updates=[{id:Math.round(s.y)*m.w+Math.round(s.x),v:0}];
+ const startH=mode==='nav-dijkstra'?0:dist(s,t)+(['hybrid','lattice'].includes(mode)?.25*Math.abs(angle(s.theta-t.theta)):0);events[0].updates=[{id:Math.round(s.y)*m.w+Math.round(s.x),v:0,h:startH,f:startH}];
  if(dist(s,t)<.01&&(!['hybrid','lattice'].includes(mode)||Math.abs(angle(s.theta-t.theta))<.01)){result.path=[s];result.raw=[s];result.success=true;event('done','起终位姿重合','无需移动，返回一个有效位姿。',{path:[s]});return result}
  const done=()=>{result.success=true;event('done','规划完成','路径已恢复。点击时间线或上一步，可重新检查每次计算。',{path:result.path});return result};
  if(mode.startsWith('nav-')){
-  const N=m.w*m.h,pot=Array(N).fill(Infinity),closed=new Set(),q=new Heap(),si=Math.round(s.y)*m.w+Math.round(s.x),ti=Math.round(t.y)*m.w+Math.round(t.x);pot[si]=0;events[0].updates=[{id:si,v:0}];q.push({id:si,g:0,f:0});
+  const N=m.w*m.h,pot=Array(N).fill(Infinity),closed=new Set(),q=new Heap(),si=Math.round(s.y)*m.w+Math.round(s.x),ti=Math.round(t.y)*m.w+Math.round(t.x);pot[si]=0;events[0].updates=[{id:si,v:0,h:startH,f:startH}];q.push({id:si,g:0,f:0});
   const h=id=>mode==='nav-astar'?dist(coordinate(m,id),t):0;
   const at=(x,y)=>x>=0&&y>=0&&x<m.w&&y<m.h?pot[y*m.w+x]:Infinity;
   while(q.length&&result.expanded<12000){const n=q.pop();if(closed.has(n.id)||n.g>pot[n.id]+1e-7)continue;closed.add(n.id);result.expanded++;const p=coordinate(m,n.id),updates=[];
-   for(const [dx,dy]of dirs4){const x=p.x+dx,y=p.y+dy;if(!free(m,x,y))continue;const id=y*m.w+x;if(closed.has(id))continue;let a=Math.min(at(x-1,y),at(x+1,y)),b=Math.min(at(x,y-1),at(x,y+1));const low=Math.min(a,b),delta=Math.abs(a-b),c=1+m.weight*m.cost[id]/252;const z=delta/c,v=delta>=c?low+c:low+c*(-.2301*z*z+.5307*z+.7040);if(v<pot[id]){pot[id]=v;updates.push({id,v});q.push({id,g:v,f:v+h(id)})}}
+   for(const [dx,dy]of dirs4){const x=p.x+dx,y=p.y+dy;if(!free(m,x,y))continue;const id=y*m.w+x;if(closed.has(id))continue;let a=Math.min(at(x-1,y),at(x+1,y)),b=Math.min(at(x,y-1),at(x,y+1));const low=Math.min(a,b),delta=Math.abs(a-b),c=1+m.weight*m.cost[id]/252;const z=delta/c,v=delta>=c?low+c:low+c*(-.2301*z*z+.5307*z+.7040);if(v<pot[id]){pot[id]=v;updates.push({id,v,h:h(id),f:v+h(id)});q.push({id,g:v,f:v+h(id)})}}
    event('search','四邻域势值传播',`更新上下左右的势值。${mode==='nav-astar'?'启发距离只影响处理顺序，不写入势值。':'Dijkstra 按累计势值优先传播。'}`,{current:p,closed:n.id,updates,g:pot[n.id],h:h(n.id),f:pot[n.id]+h(n.id),neighbors:dirs4.map(([x,y])=>({x:p.x+x,y:p.y+y})),formula:'P = L + c · φ(|a−b| / c)'});
    if(n.id===ti)break;
   }
@@ -47,10 +47,10 @@ function plan(input,start,goal,mode,opt={}){
  if(mode==='smac'||mode==='theta'){
   const si=Math.round(s.y)*m.w+Math.round(s.x),ti=Math.round(t.y)*m.w+Math.round(t.x),nodes=new Map(),closed=new Set(),q=new Heap();nodes.set(si,{id:si,g:0,parent:null});q.push({id:si,g:0,f:dist(s,t)});
   while(q.length&&result.expanded<10000){const a=q.pop(),n=nodes.get(a.id);if(closed.has(a.id)||a.g>n.g+1e-7)continue;closed.add(a.id);result.expanded++;const p=coordinate(m,a.id),updates=[],edges=[];
-   if(mode==='theta'&&n.parent!==null){const par=nodes.get(n.parent);if(par.parent!==null){const anc=coordinate(m,par.parent),l=line(m,anc,p),ng=nodes.get(par.parent).g+l.cost,accepted=l.ok&&ng<n.g-1e-7;if(accepted){n.g=ng;n.parent=par.parent}event('los','检查祖先与当前节点的视线',accepted?'无碰撞，而且代价更低：跳过中间父节点，连接祖先。':l.ok?'直线可通行，但没有更低代价，保留原父节点。':'直线穿过障碍，保留原父节点。',{current:p,los:{from:anc,to:p},accepted,updates:accepted?[{id:a.id,v:n.g}]:[],formula:'g_candidate = g(ancestor) + cost(LOS)'})}}
+   if(mode==='theta'&&n.parent!==null){const par=nodes.get(n.parent);if(par.parent!==null){const anc=coordinate(m,par.parent),l=line(m,anc,p),ng=nodes.get(par.parent).g+l.cost,accepted=l.ok&&ng<n.g-1e-7;if(accepted){n.g=ng;n.parent=par.parent}event('los','检查祖先与当前节点的视线',accepted?'无碰撞，而且代价更低：跳过中间父节点，连接祖先。':l.ok?'直线可通行，但没有更低代价，保留原父节点。':'直线穿过障碍，保留原父节点。',{current:p,los:{from:anc,to:p},accepted,updates:accepted?[{id:a.id,v:n.g,h:dist(p,t),f:n.g+dist(p,t)}]:[],formula:'g_candidate = g(ancestor) + cost(LOS)'})}}
    event('search','扩展八邻域节点','从优先队列取出 f = g + h 最小的节点，检查相邻格子并保存更低代价的父节点。',{current:p,closed:a.id,g:n.g,h:dist(p,t),f:n.g+dist(p,t),neighbors:dirs8.map(([x,y])=>({x:p.x+x,y:p.y+y}))});
    if(a.id===ti)break;
-   for(const [dx,dy]of dirs8){const b={x:p.x+dx,y:p.y+dy};if(!free(m,b.x,b.y)||!line(m,p,b).ok)continue;const id=b.y*m.w+b.x;if(closed.has(id))continue;const c=mode==='theta'?line(m,p,b).cost:Math.hypot(dx,dy)*(1+m.weight*m.cost[id]/252),g=n.g+c,old=nodes.get(id);if(!old||g<old.g){nodes.set(id,{id,g,parent:a.id});q.push({id,g,f:g+dist(b,t)});updates.push({id,v:g});edges.push({from:p,to:b})}}
+   for(const [dx,dy]of dirs8){const b={x:p.x+dx,y:p.y+dy};if(!free(m,b.x,b.y)||!line(m,p,b).ok)continue;const id=b.y*m.w+b.x;if(closed.has(id))continue;const c=mode==='theta'?line(m,p,b).cost:Math.hypot(dx,dy)*(1+m.weight*m.cost[id]/252),g=n.g+c,old=nodes.get(id);if(!old||g<old.g){nodes.set(id,{id,g,parent:a.id});q.push({id,g,f:g+dist(b,t)});updates.push({id,v:g,h:dist(b,t),f:g+dist(b,t)});edges.push({from:p,to:b})}}
    Object.assign(events.at(-1),{updates,edges});
   }
   if(!closed.has(ti))return fail('搜索队列耗尽，目标不可达。');let id=ti,back=[];while(id!==null){const p=coordinate(m,id);back.push(p);event('extract','沿父节点回溯','从目标追溯 parent，直到起点；随后反转路径。',{current:p,path:[...back]});id=nodes.get(id).parent}result.raw=back.reverse();result.path=result.raw.map(p=>({...p}));
@@ -68,7 +68,7 @@ function plan(input,start,goal,mode,opt={}){
  const all=new Map([[first.id,first]]);
  while(q.length&&result.expanded<6500){const n=q.pop().node,k=key(n);if(nodes.get(k)!==n||closed.has(k))continue;closed.add(k);result.expanded++;const updates=[],candidates=[];
   if(dist(n,t)<.7&&Math.abs(angle(n.theta-t.theta))<da*.55){found=n;event('search','达到目标位姿容差','位置误差 < 0.7 格，角度误差 < 半个角度档位。',{current:n,g:n.g,h:heur(n),f:n.g+heur(n)});break}
-  for(const a of motions(n)){let prev=n;const ok=a.seg.every(p=>{const valid=poseFree(m,p)&&line(m,prev,p).ok;prev=p;return valid});candidates.push({points:[n,...a.seg],ok,rotate:a.rotate});if(!ok)continue;const b=a.seg.at(-1),bk=key(b);if(closed.has(bk))continue;const avg=a.seg.reduce((v,p)=>v+m.cost[Math.round(p.y)*m.w+Math.round(p.x)],0)/a.seg.length,g=n.g+a.length*(1+m.weight*avg/252)*(a.turn?1.08:1);if(!nodes.has(bk)||g<nodes.get(bk).g){const child={...b,g,parent:n.id,id:seq++,segment:a.seg};nodes.set(bk,child);all.set(child.id,child);q.push({node:child,f:g+heur(child)});updates.push({id:Math.round(b.y)*m.w+Math.round(b.x),v:g})}}
+  for(const a of motions(n)){let prev=n;const ok=a.seg.every(p=>{const valid=poseFree(m,p)&&line(m,prev,p).ok;prev=p;return valid});candidates.push({points:[n,...a.seg],ok,rotate:a.rotate});if(!ok)continue;const b=a.seg.at(-1),bk=key(b);if(closed.has(bk))continue;const avg=a.seg.reduce((v,p)=>v+m.cost[Math.round(p.y)*m.w+Math.round(p.x)],0)/a.seg.length,g=n.g+a.length*(1+m.weight*avg/252)*(a.turn?1.08:1);if(!nodes.has(bk)||g<nodes.get(bk).g){const child={...b,g,parent:n.id,id:seq++,segment:a.seg};nodes.set(bk,child);all.set(child.id,child);q.push({node:child,f:g+heur(child)});updates.push({id:Math.round(b.y)*m.w+Math.round(b.x),v:g,h:heur(child),f:g+heur(child)})}}
   event('search',mode==='hybrid'?'按转弯半径投影运动':'从内置状态格动作表扩展',mode==='hybrid'?'当前车头朝向决定直行、左弧和右弧；红色为被碰撞检查拒绝的动作。':'选择当前朝向的直行、转弯或原地旋转动作；展开基元中的采样位姿。',{current:n,closed:Math.round(n.y)*m.w+Math.round(n.x),updates,candidates,g:n.g,h:heur(n),f:n.g+heur(n),formula:mode==='hybrid'?'x′ = x + R(sin θ′ − sin θ)':'edge = primitive[heading][action]'})
  }
  if(!found)return fail(result.expanded>=6500?'达到教学搜索预算（6500 个状态）。可换起终点、减小障碍或选择 Lattice 原地旋转模型。':'当前运动模型未找到满足位置和朝向容差的路线。');
