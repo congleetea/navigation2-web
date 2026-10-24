@@ -1,0 +1,11 @@
+{
+  "name": "nav2-lab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive Chinese learning labs for Navigation2 algorithms",
+  "scripts": {
+    "start": "python3 -m http.server 8765 --directory nav2-planner-lab/dist",
+    "test": "node --test nav2-planner-lab/tests/*.test.cjs"
+  },
+  "engines": { "node": ">=18" }
+}

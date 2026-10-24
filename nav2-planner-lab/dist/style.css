@@ -12,3 +12,8 @@
 .range-guide{display:flex;gap:9px 18px;flex-wrap:wrap;padding:8px 22px 4px;font-size:10px;color:#627b69}.range-item{display:flex;align-items:center;gap:6px}.range-item i{display:inline-block;flex:none;width:28px;height:10px;border-radius:2px}.range-item b{font:10px var(--mono);color:#365b4b}.range-guide p{flex-basis:100%;margin:1px 0 0;line-height:1.9;color:#7b8a73}.range-guide.no-heat .range-item i{opacity:.3}@media(max-width:760px){.range-guide{padding:8px 12px 4px;gap:9px 12px}}
 
 .next-node-hint{margin:5px 22px 10px;padding:9px 11px;border-left:3px solid #32b469;background:#eef6e9;color:#346f4d;font:11px/1.8 var(--mono)}@media(max-width:760px){.next-node-hint{margin:5px 12px 10px}}
+
+.theta-parent-legend{margin:4px 22px 11px;padding:10px 12px;border:1px solid #d9ddea;border-radius:5px;background:#f3f4f9;display:flex;flex-wrap:wrap;gap:9px 18px;color:#58657a;font-size:10px}.theta-parent-legend[hidden]{display:none}.theta-parent-legend>span{display:flex;align-items:center;gap:7px}.parent-line{width:25px;border-top:2px dashed #8580bd}.parent-line.new{border-top:3px solid #31a5bd}.theta-parent-legend p{margin:0;flex-basis:100%;font:10px/1.8 var(--mono)}@media(max-width:760px){.theta-parent-legend{margin:4px 12px 11px}}
+
+/* Keep playback next to the map, ahead of legends and explanations. */
+.map-panel>.playback{margin:12px 20px 0;padding:12px;gap:12px;flex-wrap:wrap}.map-panel>.playback .timeline{min-width:140px}.map-panel>.playback .speed-label{margin-left:auto}@media(max-width:760px){.map-panel>.playback{margin:12px 12px 0}.map-panel>.playback .timeline{flex-basis:100%}}
